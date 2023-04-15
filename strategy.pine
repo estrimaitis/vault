@@ -1,4 +1,5 @@
-// Strategy tester
+//@version=5
+strategy("Amber Strategy", overlay=true, max_lines_count=500, max_labels_count = 500, max_bars_back = 500, max_boxes_count = 500, pyramiding = 1000, default_qty_type=strategy.percent_of_equity, default_qty_value=1)
 
 // Settings
 sessionTime = input.session(defval = '1000-1900', title = "Session time", inline = "session", group = "Strategy testing")
@@ -28,9 +29,9 @@ strategyBullish = false
 strategyBearish = false
 
 // Signals
-if   em2bullish or em10bullish or em11bullish or em12bullish or em13bullish
+if   close > close[1] and close[1] > close[2] and close[2] > close[3]
     strategyBullish := true
-if   em10bearish or em2bearish or em10bearish or em11bearish or em12bearish or em13bearish
+if   open > open[1] and open[1] > open[2] and open[2] > open[3]
     strategyBearish := true
 
 // Session settings
