@@ -1,0 +1,88 @@
+// Strategy tester
+
+// Settings
+sessionTime = input.session(defval = '1000-1900', title = "Session time", inline = "session", group = "Strategy testing")
+timeZone = input(defval = "GMT+2", inline = "session", title ="", tooltip = "Enter your time zone in the format of UTC-5, GMT+2 or GMT+0530", group = "Strategy testing")
+closeTradesSwitch = input.bool(defval = false, title = "Rollover close", inline = "rollover", group = "Strategy testing")
+closeTradesHour = input.int(defval = 23, maxval = 23, minval = 0, title = "", inline = "rollover", group = "Strategy testing")
+closeTradesMinute = input.int(defval = 30, maxval = 59, minval = 0, title = "", inline = "rollover", group = "Strategy testing")
+takeProfitSize = input.float(defval = 4, minval = 0, title = "Take profit in RR", group = "Strategy testing")
+breakEvenSwitch = input.bool(defval = false, title = "Break even", group = "Strategy testing")
+breakEvenSize = input.float(defval = 2, minval = 0, title = "Break even in RR", group = "Strategy testing")
+orderTypeSwitch = input.string("Stop order", title="Order type",
+     options=["Stop order", "Limit order"], group = "Strategy testing")
+orderTypeOption = switch orderTypeSwitch
+    "Stop order" => "Stop"
+    "Limit order" => "Limit"
+
+// Variables
+string long_entry_id = "Long"
+string short_entry_id = "Short"
+string exit_long_id = "Exit Long"
+string exit_short_id = "Exit Short"
+var float entryPrice = na
+var float stopLossPrice = na
+var bool breakEvenTriggered = false
+var orderType = "Limit"
+strategyBullish = false
+strategyBearish = false
+
+// Signals
+if   em2bullish or em10bullish or em11bullish or em12bullish or em13bullish
+    strategyBullish := true
+if   em10bearish or em2bearish or em10bearish or em11bearish or em12bearish or em13bearish
+    strategyBearish := true
+
+// Session settings
+bool inSession = not na(time(timeframe.period, sessionTime, timeZone))
+bool closeSession = hour(time(timeframe.period, "0000-2359", timeZone)) == closeTradesHour and minute(time(timeframe.period, "0000-2359", timeZone)) == closeTradesMinute
+
+// Bullish Scenario
+if strategyBullish and inSession
+    entryPrice := high
+    equity = strategy.equity
+    positionSize = equity * 0.01 / entryPrice        
+    stopLossPrice := low
+    if orderType == "Limit"
+        strategy.entry(long_entry_id, strategy.long, limit=entryPrice, qty=positionSize)
+    if orderType == "Stop"
+        strategy.entry(long_entry_id, strategy.long, stop=entryPrice, qty=positionSize)
+    takeProfitPrice = entryPrice + takeProfitSize * (entryPrice - stopLossPrice)
+    strategy.exit(exit_long_id, long_entry_id, stop=stopLossPrice, limit=takeProfitPrice)
+else
+    strategy.cancel(long_entry_id)
+
+// Bearish Scenario
+if strategyBearish and inSession
+    entryPrice := low
+    equity = strategy.equity
+    positionSize = equity * 0.01 / entryPrice    
+    stopLossPrice := high
+    if orderType == "Limit"
+        strategy.entry(short_entry_id, strategy.short, limit=entryPrice, qty=positionSize)
+    if orderType == "Stop"
+        strategy.entry(short_entry_id, strategy.short, stop=entryPrice, qty=positionSize)            
+    takeProfitPrice = entryPrice - takeProfitSize * (stopLossPrice - entryPrice)
+    strategy.exit(exit_short_id, short_entry_id, stop=stopLossPrice, limit=takeProfitPrice)
+else
+    strategy.cancel(short_entry_id)
+
+// Break-even condition
+if breakEvenSwitch
+    if (strategy.position_size != 0)
+        if (strategy.position_size > 0 and (close - strategy.position_avg_price) / (strategy.position_avg_price - stopLossPrice) >= breakEvenSize)
+            if not breakEvenTriggered
+                strategy.cancel(exit_long_id)
+                strategy.exit(exit_long_id, long_entry_id, stop=strategy.position_avg_price)
+                breakEvenTriggered := true
+        else if (strategy.position_size < 0 and (strategy.position_avg_price - close) / (stopLossPrice - strategy.position_avg_price) >= breakEvenSize)
+            if not breakEvenTriggered
+                strategy.cancel(exit_short_id)
+                strategy.exit(exit_short_id, short_entry_id, stop=strategy.position_avg_price)
+                breakEvenTriggered := true
+        else
+            breakEvenTriggered := false
+
+// Close all positions at 23:00
+if closeSession
+    strategy.close_all()
