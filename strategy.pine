@@ -1,5 +1,5 @@
 //@version=5
-strategy("Amber Strategy", overlay=true, max_lines_count=500, max_labels_count = 500, max_bars_back = 500, max_boxes_count = 500, pyramiding = 1000, default_qty_type=strategy.percent_of_equity, default_qty_value=1)
+strategy("Amber Strategy", overlay=true, max_lines_count=500, max_labels_count = 500, max_bars_back = 500, max_boxes_count = 500, pyramiding = 1000)
 
 // Settings
 sessionTime = input.session(defval = '1000-1900', title = "Session time", inline = "session", group = "Strategy testing")
@@ -29,9 +29,9 @@ strategyBullish = false
 strategyBearish = false
 
 // Signals
-if   close > close[1] and close[1] > close[2] and close[2] > close[3]
+if   em2bullish or em10bullish or em11bullish or em12bullish or em13bullish
     strategyBullish := true
-if   open > open[1] and open[1] > open[2] and open[2] > open[3]
+if   em10bearish or em2bearish or em10bearish or em11bearish or em12bearish or em13bearish
     strategyBearish := true
 
 // Session settings
@@ -40,14 +40,12 @@ bool closeSession = hour(time(timeframe.period, "0000-2359", timeZone)) == close
 
 // Bullish Scenario
 if strategyBullish and inSession
-    entryPrice := high
-    equity = strategy.equity
-    positionSize = equity * 0.01 / entryPrice        
+    entryPrice := high  
     stopLossPrice := low
     if orderType == "Limit"
-        strategy.entry(long_entry_id, strategy.long, limit=entryPrice, qty=positionSize)
+        strategy.entry(long_entry_id, strategy.long, limit=entryPrice)
     if orderType == "Stop"
-        strategy.entry(long_entry_id, strategy.long, stop=entryPrice, qty=positionSize)
+        strategy.entry(long_entry_id, strategy.long, stop=entryPrice)
     takeProfitPrice = entryPrice + takeProfitSize * (entryPrice - stopLossPrice)
     strategy.exit(exit_long_id, long_entry_id, stop=stopLossPrice, limit=takeProfitPrice)
 else
@@ -56,13 +54,11 @@ else
 // Bearish Scenario
 if strategyBearish and inSession
     entryPrice := low
-    equity = strategy.equity
-    positionSize = equity * 0.01 / entryPrice    
     stopLossPrice := high
     if orderType == "Limit"
-        strategy.entry(short_entry_id, strategy.short, limit=entryPrice, qty=positionSize)
+        strategy.entry(short_entry_id, strategy.short, limit=entryPrice)
     if orderType == "Stop"
-        strategy.entry(short_entry_id, strategy.short, stop=entryPrice, qty=positionSize)            
+        strategy.entry(short_entry_id, strategy.short, stop=entryPrice)            
     takeProfitPrice = entryPrice - takeProfitSize * (stopLossPrice - entryPrice)
     strategy.exit(exit_short_id, short_entry_id, stop=stopLossPrice, limit=takeProfitPrice)
 else
